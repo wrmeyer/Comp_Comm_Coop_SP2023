@@ -1,0 +1,5 @@
+search_tweets_v2:
+    endpoint: https://api.twitter.com/2/tweets/search/all
+    consumer_secret: xxx
+    consumer_key: xxx
+    bearer_token: xxx
