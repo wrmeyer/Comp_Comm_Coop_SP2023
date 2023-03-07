@@ -1,0 +1,298 @@
+---
+title: "Introduction to R Programming"
+author: "Abby Youran QIN"
+project: "Programming Program for Proleteriat"
+---
+
+# Navigation
+
+* New file
+  + R Script
+  + R Notebook and R markdown ([link](https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=&cad=rja&uact=8&ved=2ahUKEwjA-7jxycX8AhUepokEHaCNDegQFnoECAsQAQ&url=https%3A%2F%2Fwww.rstudio.com%2Fwp-content%2Fuploads%2F2015%2F02%2Frmarkdown-cheatsheet.pdf&usg=AOvVaw0EdaMWRMevvsxYfQzsnSR4) to formatting cheatsheet). 
+  
+* Window
+  + Script Editor
+  + Console & Terminal
+  + Environment
+
+* Operations
+  + Run code
+  + R markdown & R notebook:
+    - Code chunks
+    - Knit
+
+# R Objects
+
+Reference: [R for Cats](https://rforcats.net/)
+
+### Numeric
+```{r}
+numbera <- 5 # assign value to a variable
+str(numbera) # check variable type and value
+
+numberb <- 7
+numbera + numberb
+```
+
+### Character
+```{r}
+hi <- "hello"
+str(hi)
+```
+
+### Function
+```{r}
+some_operation <- function(a, b){
+  result <- (a+b)*(a-b)*(a/b)*(a*b)
+  return(result)
+}
+
+some_operation(numbera, numberb)
+```
+
+### Vector
+```{r}
+numVec <- c(numbera, numberb, 3)
+str(numVec)
+
+friendlyVec <- c(hi, "hola", "nihao")
+str(friendlyVec)
+
+mixedVec <- c(numbera, 8, hi, "hallo")
+str(mixedVec)
+```
+##### Check & change an element in the vector
+```{r}
+friendlyVec[2] 
+friendlyVec[2] <- "Ola"
+friendlyVec[2]
+```
+##### Subset vector
+```{r}
+friendlyVec1 <- friendlyVec[1:2]
+friendlyVec1
+```
+##### Name elements in the vector
+```{r}
+names(friendlyVec) <- c("English", "Portuguese", "Chinese")
+friendlyVec["Chinese"]
+```
+##### Manipulate all elements in a vector 
+```{r}
+# Numeric
+numVec <- numVec + 1 
+numVec
+
+# Character
+paste(friendlyVec, "nice to meet you!")
+```
+
+
+### Lists
+```{r}
+myList <- list(1, "a")
+str(myList)
+myList
+
+mySuperList <- list("abc", 2023, myList)
+str(mySuperList) # Json
+```
+
+### Data Frame
+```{r}
+df1 <- data.frame(friendlyVec)
+df1
+
+df2 <- data.frame(mySuperList)
+df2
+
+df3 <- data.frame(languages = c("English", "German", "Cantonese"),
+                  thanks = c("thank you", "danke", "do ze"),
+                  lengths = c(nchar("thank you"), nchar("danke"), nchar("do ze")))
+                  # Isn't it a bit tedious? 
+                  # Let's proceed to learn more techniques to work with data frames!
+df3
+
+# matrices
+matrix <- matrix(c(1, 2, 3, 11, 12, 13), nrow = 2, ncol = 3)
+matrix # machine learning algorithm
+```
+
+### Logical
+```{r}
+nay <- FALSE
+yeah <- TRUE
+str(nay)
+str(yeah)
+```
+
+##### If Statement
+```{r}
+a <- 1
+if (a == 1){
+  print("first!")
+} else if (a == 2){
+  print("second!")
+} else if (a == 1){
+  print("First!!!")
+} else if (a == 3){
+  print("third!")
+} else {
+  print("You haven't made it to the top3")
+}
+```
+
+##### While Loop
+```{r}
+n <- 1
+while (n < 6){
+  print(n)
+  n = n+1
+}
+
+workshop <- "Programming Program for Proletariat"
+guests <- c("Sang", "Max", "Jess", "Luhang", "Fan", "Yibing", "Abby", "Wil")
+
+n <- 1
+while (n < 7){
+  print(guests[n])
+  n = n+1
+}
+
+switch <- TRUE
+n <- 1
+while (switch){
+  print(guests[n])
+  n = n+1
+  if (guests[n] == "Abby") {
+    switch <- FALSE
+  }
+}
+```
+##### For Loop
+```{r}
+for (letter in workshop) {
+  print(letter)
+}
+
+for (person in guests) {
+  print(person)
+}
+
+for (person in guests) {
+  if (person == "Abby"){
+    break
+  }
+  print(person)
+}
+
+```
+##### Compare vectors
+```{r}
+friendlyVec
+friendlyVec1
+overlap <- friendlyVec %in% friendlyVec1
+overlap
+friendlyVec[overlap]
+friendlyVec[!overlap]
+```
+
+##### Any & All
+```{r}
+any(overlap == FALSE)
+any(overlap == TRUE)
+all(overlap == FALSE)
+```
+
+# R Libraries
+
+##### Basic Operations
+```{r eval=FALSE}
+## Check your installed packages
+installed.packages()
+
+## Package installation
+install.packages(c("tidyverse", "dplyr"))
+
+## Libraries importing
+library(tidyverse)
+library(dplyr)
+```
+
+##### Advanced Template
+```{r message=FALSE}
+
+## Advanced template to install packages not yet installed
+packages <- c("tidyverse", "dplyr") # Put all libraries you need in a vector
+installed_packages <- packages %in% rownames(installed.packages())
+if (any(installed_packages == FALSE)) {
+  install.packages(packages[!installed_packages], repos = 'http://cran.us.r-project.org')
+}
+
+## Load packages
+invisible(lapply(packages, library, character.only = TRUE))
+```
+
+##### Updating Packages
+
+**Note**. You don't need to check for updates very often. Also, this is not usually a problem but in case you've been using a package extensively in your codes, you'd better check the version difference before updating that package, so that the update does not make your previous codes unusable.   
+```{r eval=FALSE}
+# Check packages that are not up to date
+old.packages() 
+# Deciding for each old package whether you'd like to update it
+update.packages()
+
+# If you only want to update a single package, just re-install it!
+install.packages("dplyr")
+```
+
+##### Updating R & R Studio
+
+R Studio: You may navigate to RStudio - Help - Check for Updates to check for available updates and update the application accordingly.  
+
+R: You can update your R by directly downloading and installing the latest version from [CRAN](https://cran.r-project.org/). After installation, you can restart your RStudio to use the updated R. 
+
+
+# R Data Frame
+## Importing Data Files
+```{r}
+# Set working directory
+setwd("/Users/abby/Documents/GitHub/ProgrammingProgramForProletariat/HelloWorld/R_1_Intro") 
+
+# Import data
+df <- read.csv("cannabis.csv")
+head(df, n=3) # Check the first 3 rows (5 by default if n is not specified)
+```
+
+## Data Cleaning
+##### Convert categorical variables into "factor"
+```{r}
+df$lang <- as.factor(df$lang)
+summary(df$lang)
+summary(df$source)
+df$source <- as.factor(df$source)
+summary(df$source)
+df$reply_settings <- as.factor(df$reply_settings)
+df$referenced_tweets_type <- as.factor(df$referenced_tweets_type)
+```
+##### Convert the date variable into "Date"
+```{r}
+df$created_at <- as.Date(df$created_at)
+summary(df$created_at)
+```
+##### Subsetting a dataframe by columns
+```{r}
+df <- df[c(1:16)]
+summary(df)
+```
+##### Subsetting a dataframe by rows
+```{r}
+dfiPhone <- subset(df, source == "Twitter for iPhone")
+summary(dfiPhone)
+```
+
+## Exporting Data
+```{r}
+write.csv(df, "cannabis_cleaned.csv")
+```
+

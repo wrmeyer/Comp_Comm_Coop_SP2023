@@ -1,0 +1,247 @@
+---
+title: "Scraping and Data Cleaning for News Databases"
+author: "Abby Youran QIN"
+output:
+  html_document:
+    df_print: paged
+---
+
+### Importing libraries and files
+```{r results='hide', message=FALSE}
+packages <- c("striprtf", # To read .rtf files
+              "stringr", # To parse character strings
+              "readr", # To parse numbers
+              "lubridate") # To process date strings
+installed_packages <- packages %in% rownames(installed.packages())
+if (any(installed_packages == FALSE)) {
+  install.packages(packages[!installed_packages], repos = 'http://cran.us.r-project.org')
+}
+invisible(lapply(packages, library, character.only = TRUE))
+
+setwd("/Users/abby/Documents/GitHub/ProgrammingProgramForProletariat/SomethingPublishable/NewsDatabase") 
+
+nexis <- read_rtf("nexis.rtf")
+factiva <- read_rtf("factiva.rtf")
+```
+
+# Nexis Uni
+
+### Scraping
+First, inspecting the file, we can observe that there are 7 pieces of useful information for each article, namely title, date, section, length, byline, highlight (for some articles), and body. So, we will create an empty data frame with 7 columns and 100 rows to hold the information.
+```{r}
+Narticles <- data.frame(matrix(ncol = 7, nrow = 100))
+variables <- c("Title", "Date", "Section", "Length", "Byline", "Highlight", "Body")
+colnames(Narticles) <- variables
+```
+
+Then, Let's parse the information out with a for loop.  
+
+* Example: Title - The first informative line is the 1st article's title. A title can take multiple lines, but we are sure a title is finished when we see the "The New York Times" line.  
+  + We set the article count to 1, so that the information is filled in the first row.
+  + We change the value of every cell in the Title column from NA to an empty string so that we can append multiple title lines one after another.
+  + We turn on the title "switch" so that all the lines before the appearance of "The New York Times" are concatenated together and put in the title cell.
+  + We turn off the title "switch" when we see "The New York Times" so that later lines are not recorded as part of the title. Meanwhile, we turn on the date "switch" because the next line will be the article's date. **Note that you should always put the "turn off the switch" statement before the "if the switch is on, do xxx" statement, so that the program checks whether the switch should be turned off in this round before acting as if the switch is still on**.
+  + We turn on the title "switch" again and add 1 to the article count once we see "End of Document" so that we can start to record the title of the next article in the next row.
+
+```{r}
+# We start by putting the 1st article's info in the 1st row.
+articleNo <- 1 
+
+# Making sure that the title cells are empty strings instead of NAs so that we can append strings at the end of it. You don't have to do this if you are directly assigning values to a cell.
+Narticles$Title <- "" 
+
+# The title switch is on because this will be the first piece of useful information we encounter.
+title <- TRUE 
+
+# The date and body switches are off because the first piece of information is not an article's date or body.
+date <- FALSE
+body <- FALSE
+
+for (line in nexis) {
+  # Turning off title and turning on date when we see "The New York Times" because this line lies between title and date.
+  if (startsWith(line, "The New York Times")){ 
+    title <- FALSE
+    date <- TRUE
+  } 
+  # We use paste to concatenate strings instead of directly assigning a line to the Title cell because a title can take multiple lines and we hope to make sure we get the complete title.
+  else if (title == TRUE){
+    Narticles$Title[articleNo] <- paste(Narticles$Title[articleNo], line) 
+  } 
+  # Assigning the date line to the Date cell of the corresponding article.
+  else if (date == TRUE) {
+    Narticles$Date[articleNo] <- line
+    date <- FALSE
+  } 
+  # Assigning the section line to the Section cell of the corresponding article.
+  else if (startsWith(line, "Section:")) {
+    Narticles$Section[articleNo] <- line
+  } 
+  # Assigning the length line to the Length cell of the corresponding article.
+  # parse_number function allows us to keep only the numeric part of the line.
+  else if (startsWith(line, "Length:")) {
+    Narticles$Length[articleNo] <- parse_number(line)
+  } 
+  # Assigning the byline line to the Byline cell of the corresponding article.
+  else if (startsWith(line, "Byline")) {
+    Narticles$Byline[articleNo] <- line
+  } 
+  # Assigning the highlight line to the Highlight cell of the corresponding article.
+  else if (startsWith(line, "Highlight")) {
+    Narticles$Highlight[articleNo] <- line
+  } 
+  # When we see a line with the single word "Body", we know the upcoming lines all belong to the current article's body, so we switch on the body switch, and put an empty string in the Body cell of this row, getting ready to append later parts of the article's body to this cell as we loop through them.
+  else if (line == "Body") {
+    body <- TRUE
+    Narticles$Body[articleNo] <- ""
+  } 
+  # If an article contains a photo, a description of the photo will appear immediately after the article's body. As we see the photo description, we are sure that the article is finished, so we can turn off the body switch to stop recording later lines as part of the article's body.
+  # We could omit this "else if" claim at the "PHOTO" line and the next "else if" claim at the "Load-Date" line. I include this two to switch off the body recording as early as possible, so that information about photo and load date will not be included in the body of the article.
+  else if (startsWith(line,"PHOTO")) {
+    body <- FALSE
+  } 
+  # We are not sure if all articles contain a photo, so we turn off the body switch again when we see a line that starts with "Load-Date", just to make sure.
+  else if (startsWith(line,"Load-Date")){
+    body <- FALSE
+  } 
+  # Here, we are (1) turning off the body switch again just to make sure; (2) turning on the title switch because this is definitely the end of one article. Later lines will either be the next article or spaces between the two articles; and (3) adding our article count by 1 so that later information will be recorded onto the next row.
+  else if (startsWith(line,"End of Document")){
+    body <- FALSE
+    title <- TRUE
+    articleNo <- articleNo + 1
+  } 
+  # If the body switch is on, we'll concatenate the line at the end of the body cell of the current article. This line is put at the end because, as mentioned above in the bold text - you should always put the "turn off the switch" statement before the "if the switch is on, do xxx" statement.
+  else if (body == TRUE) {
+    Narticles$Body[articleNo] <- paste(Narticles$Body[articleNo], line)
+  } 
+}
+```
+
+### Cleaning
+
+Look at what we've gotten here!!!
+
+```{r}
+head(Narticles)
+```
+Hmmm, they all look roughly nice.  
+
+* Except...  
+  + Some spaces before titles and bodies
+  + "Section:", "Byline:", and "Highlight:" before the actual sections, bylines, and highlights
+
+Let's fix them!
+```{r}
+# Defining a function that takes a string in and cleans it
+remove_prefix <- function (str) { 
+  # Replacing unnecessary prefixes with empty strings
+  str <- gsub("Byline:", "", str) 
+  str <- gsub("By", "", str) 
+  str <- gsub("Highlight:", "", str)
+  str <- gsub("Section:", "", str)
+  # Trimming leading and tailing spaces
+  str <- str_trim(str)
+  # returning the processed string
+  return(str)
+}
+
+# Using sapply function to apply the function just defined to every cell in the input vector 
+Narticles$Byline <- sapply(Narticles$Byline, remove_prefix) 
+Narticles$Section <- sapply(Narticles$Section, remove_prefix)
+Narticles$Highlight <- sapply(Narticles$Highlight, remove_prefix)
+
+# For Title and Body, we only need to trim spaces
+Narticles$Title <- sapply(Narticles$Title, str_trim)
+Narticles$Body <- sapply(Narticles$Body, str_trim)
+```
+
+
+Now let's look at the summary of our data
+
+
+```{r}
+summary(Narticles)
+```
+Oops, nothing interesting, because most variables are in character format... Let's process them a bit further!
+```{r}
+# Deleting everything after "2022" because some articles have time but others don't.
+Narticles$Date <- sapply(Narticles$Date, function(str) return(gsub("2022(.*)", "2022", str)))
+# Using lubridate's mdy function to parse non-numeric expressions of months
+Narticles$Date <- mdy(Narticles$Date)
+
+# Deleting everything starting from page number because they are too detailed
+Narticles$Section <- sapply(Narticles$Section, function(str) return(gsub("Pg(.*)", "", str)))
+# Converting the column type to factor, because section is a categorical variable
+Narticles$Section <- as.factor(Narticles$Section)
+
+# Converting the column type to factor, because author is a categorical variable
+Narticles$Byline <- as.factor(Narticles$Byline)
+
+# Now look at what we get!
+summary(Narticles)
+```
+##### Great job! Your newspaper data is ready!
+
+
+# Factiva
+
+##### After learning the Nexis Uni example, are you able to write a program to parse the Factiva output? Try it before reading my codes!
+
+##### No matter whether you can successfully write your own loop, are you able to understand the codes below?
+
+### Scraping
+```{r}
+articleNo <- 0
+title <- FALSE
+length <- FALSE
+date <- FALSE
+body <- FALSE
+
+Farticles <- data.frame(matrix(ncol = 6, nrow = 100))
+variables <- c("Section", "Title", "Byline", "Length", "Date", "Body")
+colnames(Farticles) <- variables
+for (line in factiva) {
+  if (grepl("SECT", line, fixed = TRUE)){
+    articleNo <- articleNo + 1
+    Farticles$Section[articleNo] <- line
+    title <- TRUE
+    Farticles$Title[articleNo] <- ""
+  } else if (startsWith(line, "By ") & endsWith(line, " ")) {
+    Farticles$Byline[articleNo] <- line
+    title <- FALSE
+    length <- TRUE
+  } else if (title == TRUE) {
+    Farticles$Title[articleNo] <- paste(Farticles$Title[articleNo], line)
+  } else if (length == TRUE) {
+    Farticles$Length[articleNo] <- parse_number(line)
+    length <- FALSE
+    date <- TRUE
+  } else if (date == TRUE) {
+    Farticles$Date[articleNo] <- line
+    date <- FALSE
+  } else if (startsWith(line, "Copyright")) {
+    Farticles$Body[articleNo] <- ""
+    body <- TRUE
+  } else if (startsWith(line,"Document NYT")) {
+    body <- FALSE
+  } else if (body == TRUE) {
+    Farticles$Body[articleNo] <- paste(Farticles$Body[articleNo], line)
+  } 
+}
+```
+
+### Cleaning
+```{r}
+Farticles$Byline <- sapply(Farticles$Byline, function(str) return(gsub("By", "", str)))
+
+Farticles$Title <- sapply(Farticles$Title, str_trim)
+Farticles$Byline <- sapply(Farticles$Byline, str_trim)
+Farticles$Body <- sapply(Farticles$Body, str_trim)
+
+Farticles$Date <- dmy(Farticles$Date)
+
+Farticles$Section <- as.factor(Farticles$Section)
+Farticles$Byline <- as.factor(Farticles$Byline)
+
+summary(Farticles)
+```
+

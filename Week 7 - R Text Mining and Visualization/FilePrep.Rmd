@@ -1,0 +1,167 @@
+---
+title: "R Text Mining File Preparation"
+author: "Abby Youran QIN"
+project: "Programming Program For Proletariat"
+output:
+  html_document:
+    df_print: paged
+---
+
+### Installing & Importing Libraries
+```{r message=FALSE}
+packages <- c("striprtf", # To read .rtf files
+              "stringr", # To parse character strings
+              "readr", # To parse numbers
+              "lubridate", # To process date & time
+              "tidyr") # For basic dataframe processing
+ 
+installed_packages <- packages %in% rownames(installed.packages())
+if (any(installed_packages == FALSE)) {
+  install.packages(packages[!installed_packages], repos = 'http://cran.us.r-project.org')
+}
+invisible(lapply(packages, library, character.only = TRUE))
+
+setwd("/Users/abby/Documents/GitHub/ProgrammingProgramForProletariat/HelloWorld/R_2_TextMining") 
+```
+
+### Parsing .rtf Files
+
+**Step 1**. Reading in the .rtf file. 
+```{r}
+f1 <- read_rtf("blk1.rtf")
+```
+
+**Step 2**. Check the file and look for patterns.  
+
+```{r}
+f1[1:100]
+```
+* Discernible Patterns. 
+  + Word count line always ends with "words". 
+  + Word count line is followed by a date line. 
+  + Date line is followed by a news source line. 
+  + Body starts after copyrights line which starts with either "©" or "Copyright". 
+  + Body ends with a line starting with "Document". 
+  
+  
+**Step 3**. Parsing it out with a for loop. For more details, check SomethingPublishable - NewsDatabase - scraping.rmd.
+
+```{r}
+articleNo <- 1
+date <- FALSE
+source <- FALSE
+body <- FALSE
+F1articles <- data.frame(matrix(ncol = 4, nrow = 100))
+variables <- c("Length", "Date", "Source", "Body")
+colnames(F1articles) <- variables
+
+for (line in f1) {
+  if (endsWith(line, "words")){
+    F1articles$Length[articleNo] <- parse_number(line)
+    date <- TRUE
+  } else if (date == TRUE){
+    F1articles$Date[articleNo] <- line
+    date <- FALSE
+    source <- TRUE
+  } else if (source == TRUE){
+    F1articles$Source[articleNo] <- line
+    source <- FALSE
+  } else if (startsWith(line, "©") || startsWith(line, "Copyright")) {
+    body <- TRUE
+  } else if (startsWith(line,"Document")) {
+    body <- FALSE
+    articleNo <- articleNo + 1
+  } else if (body == TRUE) {
+    F1articles$Body[articleNo] <- paste(F1articles$Body[articleNo], line)
+  } 
+}
+
+head(F1articles)
+```
+
+**Step 4**. Write a function to parse similar files. 
+```{r}
+rtfToCsv <- function(file){
+# Our function is named as rtfToCsv, it takes an input and do the following operations.
+  
+  articleNo <- 1
+  date <- FALSE
+  source <- FALSE
+  body <- FALSE
+  
+  csv <- data.frame(matrix(ncol = 4, nrow = 300))
+  variables <- c("Length", "Date", "Source", "Body")
+  colnames(csv) <- variables
+  
+  for (line in file) {
+    if (endsWith(line, "words")){
+      csv$Length[articleNo] <- parse_number(line)
+      date <- TRUE
+    } else if (date == TRUE){
+      csv$Date[articleNo] <- line
+      date <- FALSE
+      source <- TRUE
+    } else if (source == TRUE){
+      csv$Source[articleNo] <- line
+      source <- FALSE
+    } else if (startsWith(line, "©") || startsWith(line, "Copyright")) {
+      body <- TRUE
+    } else if (startsWith(line,"Document")) {
+      body <- FALSE
+      articleNo <- articleNo + 1
+    } else if (body == TRUE) {
+      csv$Body[articleNo] <- paste(csv$Body[articleNo], line)
+    } 
+  }
+  
+  return(csv) # The function will return the "csv" data.frame we created to the global environment
+}
+```
+
+**Step 5**. Read .rtf files into r as character strings, and feed the character strings into the function we just wrote.
+
+```{r}
+# I did not include the read_rtf() step in the function because it takes time to read the rtf in. So once it's read, we hope to store it in an object so that we do not need to read it in again. 
+# If we read the .rtf file in our function, we won't get the object in our global environment. It will be just an object in the function environment. If any later lines in the function fails, our object will be lost and we will need to take the time to read it in again.
+f2 <- read_rtf("blk2.rtf")
+f3 <- read_rtf("blk3.rtf")
+f4 <- read_rtf("blk4.rtf")
+f5 <- read_rtf("blk5.rtf")
+
+# After reading all .rtf files into character string objects, we feed each object into the function to parse it out into dataframes. 
+F2articles <- rtfToCsv(f2)
+F3articles <- rtfToCsv(f3)
+F4articles <- rtfToCsv(f4)
+F5articles <- rtfToCsv(f5)
+```
+
+### Processing the Resulting Data Frames
+
+
+**Step 1**. Combining data.  
+```{r}
+df <- rbind(F1articles, F2articles, F3articles, F4articles, F5articles) %>% 
+      # bind the rows of the 5 data frames together and
+  drop_na()
+  # discard the NA rows
+
+head(df)
+```
+
+**Step 2**. Cleaning data.
+```{r}
+# Trimming the NA and unnecessary spaces in the body text
+df$Body <- sapply(df$Body, function(str) return(str_trim(gsub("NA", "", str))))
+# Converting the data column to standardized date
+df$Date <- dmy(df$Date)
+# Converting categorical variables into factor type
+df$Source <- as.factor(df$Source)
+
+summary(df)
+```
+
+**Step 3**. Exporting data.
+```{r}
+write.csv(df, "blkchain&env.csv")
+```
+

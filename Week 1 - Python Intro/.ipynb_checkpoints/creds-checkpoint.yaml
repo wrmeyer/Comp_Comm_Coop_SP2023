@@ -1,0 +1,5 @@
+search_tweets_v2:
+    endpoint: https://api.twitter.com/2/tweets/search/all
+    consumer_secret: Dv22X6Obf7rKKVOOSTfmv4WxBOScV6lZipQqp9MEFjWicxIb08
+    consumer_key: RMmbYPYpxtcoKm0SPtPQFaOe4
+    bearer_token: AAAAAAAAAAAAAAAAAAAAAM6VlgEAAAAAWkNXVjm9MfI7GrjChCEznMjaGR0%3Du2rYVH7aKyvbyMiHtDoes8KAXBb0cXq8BNdcnJqgxdIc15XfVE
